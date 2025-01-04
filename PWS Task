@@ -1,0 +1,197 @@
+------------------/*Node.js library*/------------------------------
+
+npx http-server
+
+-------------------------------------/* index.html*/------------------------------
+<!DOCTYPE html>
+<html lang="en-US" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="shortcut icon" href="https://c.s-microsoft.com/favicon.ico?v2" />
+    <title>Temperature converter</title>
+  </head>
+  <body>
+    <h1>Temperature converter</h1>
+  </body>
+</html>
+
+---------------------------------/*manifest.json*/---------------------------------
+{
+    "lang": "en-us",
+    "name": "Temperature converter app",
+    "short_name": "Temperature converter",
+    "description": "A basic temperature converter application that can convert to and from Celsius, Kelvin, and Fahrenheit",
+    "start_url": "/",
+    "background_color": "#2f3d58",
+    "theme_color": "#2f3d58",
+    "orientation": "any",
+    "display": "standalone",
+    "icons": [
+        {
+            "src": "/icon512.png",
+            "sizes": "512x512"
+        }
+    ]
+}
+
+--------------------------------/*index.html*/----------/*<head*/>----------------------------
+
+<link rel="manifest" href="/manifest.json">
+
+-------------------------------/*index.html*/----------------------------------------
+<form id="converter">
+  <label for="input-temp">temperature</label>
+  <input type="text" id="input-temp" name="input-temp" value="20" />
+  <label for="input-unit">from</label>
+  <select id="input-unit" name="input-unit">
+    <option value="c" selected>Celsius</option>
+    <option value="f">Fahrenheit</option>
+    <option value="k">Kelvin</option>
+  </select>
+  <label for="output-unit">to</label>
+  <select id="output-unit" name="output-unit">
+    <option value="c">Celsius</option>
+    <option value="f" selected>Fahrenheit</option>
+    <option value="k">Kelvin</option>
+  </select>
+  <output name="output-temp" id="output-temp" for="input-temp input-unit output-unit">68 F</output>
+</form>
+
+----------------------------------/*converter.js*/------------------------------------------
+const inputField = document.getElementById('input-temp');
+const fromUnitField = document.getElementById('input-unit');
+const toUnitField = document.getElementById('output-unit');
+const outputField = document.getElementById('output-temp');
+const form = document.getElementById('converter');
+
+function convertTemp(value, fromUnit, toUnit) {
+  if (fromUnit === 'c') {
+    if (toUnit === 'f') {
+      return value * 9 / 5 + 32;
+    } else if (toUnit === 'k') {
+      return value + 273.15;
+    }
+    return value;
+  }
+  if (fromUnit === 'f') {
+    if (toUnit === 'c') {
+      return (value - 32) * 5 / 9;
+    } else if (toUnit === 'k') {
+      return (value + 459.67) * 5 / 9;
+    }
+    return value;
+  }
+  if (fromUnit === 'k') {
+    if (toUnit === 'c') {
+      return value - 273.15;
+    } else if (toUnit === 'f') {
+      return value * 9 / 5 - 459.67;
+    }
+    return value;
+  }
+  throw new Error('Invalid unit');
+}
+
+form.addEventListener('input', () => {
+  const inputTemp = parseFloat(inputField.value);
+  const fromUnit = fromUnitField.value;
+  const toUnit = toUnitField.value;
+
+  const outputTemp = convertTemp(inputTemp, fromUnit, toUnit);
+  outputField.value = (Math.round(outputTemp * 100) / 100) + ' ' + toUnit.toUpperCase();
+});
+
+------------------------------------/*index.html*/-----------/*<form*/>----------------------------
+
+<script src="converter.js"></script>
+
+-------------------------------------/*converter.css*/-------------------------------------
+html {
+  background: rgb(243, 243, 243);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 15pt;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+#converter {
+  width: 15rem;
+  padding: 2rem;
+  border-radius: .5rem;
+  box-shadow: 0 0 2rem 0 #0001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#converter input, #converter select {
+  font-family: inherit;
+  font-size: inherit;
+  margin-block-end: 1rem;
+  text-align: center;
+  width: 10rem;
+}
+
+#converter #output-temp {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+------------------------------------------/*index.html*/--------/*<head */>-----------------------
+
+<link rel="stylesheet" href="converter.css">
+
+-----------------------------------------------/*sw.js*/------------------------------------
+const CACHE_NAME = `temperature-converter-v1`;
+
+// Use the install event to pre-cache all initial resources.
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    cache.addAll([
+      '/',
+      '/converter.js',
+      '/converter.css'
+    ]);
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // Get the resource from the cache.
+    const cachedResponse = await cache.match(event.request);
+    if (cachedResponse) {
+      return cachedResponse;
+    } else {
+        try {
+          // If the resource was not in the cache, try the network.
+          const fetchResponse = await fetch(event.request);
+
+          // Save the resource in the cache and return it.
+          cache.put(event.request, fetchResponse.clone());
+          return fetchResponse;
+        } catch (e) {
+          // The network failed.
+        }
+    }
+  })());
+});
+
+------------------------------------/*index.html */-----------------/*<body*/>------
+<script>
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' });
+}
+</script>
+
